@@ -1,145 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard TLV</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:40px;
+}
+
+canvas{
+max-width:600px;
+margin-top:40px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Dashboard de Inconsistências</h1>
+
+<canvas id="chartPostos"></canvas>
+
+<script>
+
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNDW4gpgE026lUXDxYJIjkwXKM8xTy6Cn5xosE5v2yRvQC_9wZCNcnAZyrcfQ-6ufGqjW6GR5-yNv7/pub?output=csv";
 
-const colors = [
-'#e8401a','#f5a623','#2dd4bf','#a78bfa','#fb923c',
-'#34d399','#60a5fa','#f472b6','#facc15','#94a3b8',
-'#e879f9','#4ade80','#f87171','#38bdf8','#c084fc'
-];
-
 async function carregarDados(){
-
  const res = await fetch(CSV_URL);
  const csv = await res.text();
 
  const linhas = csv.split("\n").slice(1);
 
- const registros = linhas.map(l => {
-   const col = l.split(",");
+ const postos = {};
 
-   return {
-     nome: col[0],
-     posto: col[1],
-     empresa: col[2],
-     inconsistencias: Number(col[3])
+ linhas.forEach(l => {
+   const col = l.split(",");
+   const posto = col[1];
+   const inconsistencias = Number(col[3]);
+
+   if(!postos[posto]) postos[posto] = 0;
+   postos[posto] += inconsistencias;
+ });
+
+ const labels = Object.keys(postos);
+ const valores = Object.values(postos);
+
+ const ctx = document.getElementById('chartPostos');
+
+ new Chart(ctx,{
+   type:'bar',
+   data:{
+     labels:labels,
+     datasets:[{
+       label:'Inconsistências',
+       data:valores
+     }]
    }
  });
 
- processarDados(registros);
-}
-
-function processarDados(dados){
-
- const postosMap = {};
- const colaboradores = [];
-
- dados.forEach(d => {
-
-   if(!postosMap[d.posto]) postosMap[d.posto] = 0;
-   postosMap[d.posto] += d.inconsistencias;
-
-   colaboradores.push({
-     name: d.nome,
-     posto: d.posto,
-     empresa: d.empresa,
-     qtd: d.inconsistencias
-   });
-
- });
-
- const postos = Object.keys(postosMap)
-   .map(p => ({name:p,qtd:postosMap[p]}))
-   .sort((a,b)=>b.qtd-a.qtd)
-   .slice(0,15);
-
- colaboradores.sort((a,b)=>b.qtd-a.qtd);
-
- renderDashboard(postos,colaboradores);
-}
-
-function renderDashboard(postos,colaboradores){
-
- const maxQtd = postos[0].qtd;
-
- const postosList = document.getElementById('postos-list');
- postosList.innerHTML = "";
-
- postos.forEach((p,i)=>{
-
-  const pct = (p.qtd/maxQtd)*100;
-  const color = colors[i] || "#6b7280";
-
-  postosList.innerHTML += `
-  <div class="posto-bar-row">
-    <span class="posto-rank">${i+1}</span>
-    <span class="posto-name">${p.name}</span>
-    <div class="posto-bar-wrap">
-      <div class="posto-bar" style="width:${pct}%;background:${color}"></div>
-    </div>
-    <span class="posto-qtd" style="color:${color}">${p.qtd}</span>
-  </div>
-  `;
- });
-
- const colabList = document.getElementById('colab-list');
- colabList.innerHTML="";
-
- colaboradores.slice(0,10).forEach((c,i)=>{
-
-  const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
-  const qtdClass = c.qtd>=20?'high':c.qtd>=16?'mid':'low';
-
-  colabList.innerHTML+=`
-  <div class="colab-row">
-   <span class="colab-rank ${rankClass}">${i+1}</span>
-   <div class="colab-info">
-    <div class="colab-name">${c.name}</div>
-    <div class="colab-meta">${c.posto} · ${c.empresa}</div>
-   </div>
-   <span class="colab-qtd ${qtdClass}">${c.qtd}</span>
-  </div>
-  `;
- });
-
- criarGraficos(postos);
-}
-
-function criarGraficos(postos){
-
- const ctx1=document.getElementById('chartPostos');
-
- new Chart(ctx1,{
-  type:'doughnut',
-  data:{
-   labels:postos.slice(0,8).map(p=>p.name),
-   datasets:[{
-    data:postos.slice(0,8).map(p=>p.qtd),
-    backgroundColor:colors.slice(0,8)
-   }]
-  },
-  options:{
-   responsive:true,
-   maintainAspectRatio:false,
-   cutout:'60%'
-  }
- });
-
- const ctx3=document.getElementById('chartBarPosTo');
-
- new Chart(ctx3,{
-  type:'bar',
-  data:{
-   labels:postos.slice(0,10).map(p=>p.name),
-   datasets:[{
-    label:'Inconsistências',
-    data:postos.slice(0,10).map(p=>p.qtd),
-    backgroundColor:colors.slice(0,10)
-   }]
-  },
-  options:{
-   responsive:true,
-   maintainAspectRatio:false
-  }
- });
 }
 
 carregarDados();
+
+</script>
+
+</body>
+</html>
